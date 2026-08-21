@@ -2,8 +2,7 @@
 """违禁词自检脚本:扫描文案,标注命中的违禁词,提供改写建议。
 
 读取 assets/banned-words.json,扫描输入文案,输出命中报告(位置/级别/原句/建议改写词)。
-实际改写由 skill 步骤 7 的 LLM 执行(考虑上下文,不机械替换)。
-对应 grill 决策 Q6=A(自检并改写)。
+实际改写由 skill 步骤 7 的 LLM 执行(考虑上下文,不机械替换);改写后必须复检一遍,通过才算过关。
 """
 
 from __future__ import annotations
@@ -21,6 +20,13 @@ LEVEL_EMOJI = {
     "sensitive": "⚠️",
     "limit": "📉",
 }
+
+# 单字违禁词紧跟这些字时是中性词(最后/最初/最近/最终/最先),跳过防误报
+COMPOUND_SKIP = {"后", "初", "近", "终", "先"}
+
+# "第一"后接量词/序数单位(第一个/第一次/第一天)时是事实陈述,不是排名宣传,跳过防误报
+ORDINAL_MEASURE = {"个", "次", "天", "年", "篇", "周", "月", "步", "轮", "期", "集",
+                   "家", "位", "批", "份", "场", "段", "层", "版", "首", "套"}
 
 
 def load_words(words_file: Path) -> dict:
@@ -50,6 +56,14 @@ def scan_text(text: str, words_data: dict) -> list:
                 idx = text.find(word, start)
                 if idx == -1:
                     break
+                # 单字词防误报:后接中性字(后/初/近/终/先)时按"最后/最初"等中性词跳过
+                if len(word) == 1 and idx + 1 < len(text) and text[idx + 1] in COMPOUND_SKIP:
+                    start = idx + 1
+                    continue
+                # "第一"防误报:后接量词(个/次/天...)时是序数用法,不是排名宣传,跳过
+                if word == "第一" and idx + 2 < len(text) and text[idx + 2] in ORDINAL_MEASURE:
+                    start = idx + 2
+                    continue
                 # 提取上下文(前后 20 字)
                 ctx_start = max(0, idx - 20)
                 ctx_end = min(len(text), idx + len(word) + 20)
