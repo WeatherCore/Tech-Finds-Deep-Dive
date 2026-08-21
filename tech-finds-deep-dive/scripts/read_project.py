@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""读项目核心文件,产出结构化项目摘要供 xhs-tech-deep-dive skill 的 LLM 推理用。
+"""读项目核心文件,产出结构化项目摘要供 tech-finds-deep-dive skill 的 LLM 推理用。
 
-读取深度 = C:README + 技术栈 + 主入口 + 架构文档/关键模块(不读测试用例,避免 context 爆炸)。
-对应 grill 决策 Q18=C。
+读取范围:README + 技术栈 + 主入口 + 架构文档/关键模块(不读测试用例,避免 context 爆炸)。
+本脚本是可选加速:不可用时(Python 缺失/路径不可解析),LLM 用 Read 工具按相同范围读取,不中断流程。
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ STACK_FILES = {
 }
 
 # README 候选(按优先级)。SKILL.md 作为 fallback——
-# 因为推广对象含 skill 本身(Q9 校准),skill 项目通常无 README,核心文档是 SKILL.md
+# 推广对象含 skill 本身时,skill 项目通常无 README,核心文档是 SKILL.md
 README_CANDIDATES = [
     "README.md", "README.rst", "README.txt", "README",
     "readme.md", "readme.rst", "readme.txt", "readme",
@@ -236,7 +236,7 @@ def print_markdown(s: dict) -> None:
 
     if s["readme_excerpt"]:
         print("## README 摘要")
-        print(f"```\n{s['readme_excerpt'][:3000]}\n```\n")
+        print(f"```\n{s['readme_excerpt'][:8000]}\n```\n")
 
     if s["entries"]:
         print("## 主入口文件")
