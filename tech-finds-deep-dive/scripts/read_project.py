@@ -2,7 +2,8 @@
 """读项目核心文件,产出结构化项目摘要供 tech-finds-deep-dive skill 的 LLM 推理用。
 
 读取范围:README + 技术栈 + 主入口 + 架构文档/关键模块(不读测试用例,避免 context 爆炸)。
-本脚本是可选加速:不可用时(Python 缺失/路径不可解析),LLM 用 Read 工具按相同范围读取,不中断流程。
+本脚本是可选加速:不可用时(Python 缺失/路径不可解析),
+LLM 用 Read 工具按相同范围读取,不中断流程。
 """
 
 from __future__ import annotations
@@ -42,12 +43,26 @@ README_CANDIDATES = [
 
 # 主入口候选(按语言)
 ENTRY_CANDIDATES = {
-    "python": ["main.py", "app.py", "run.py", "__main__.py", "manage.py", "wsgi.py", "asgi.py", "cli.py"],
-    "node": ["index.js", "index.ts", "main.js", "main.ts", "app.js", "app.ts", "src/index.js", "src/index.ts", "src/main.ts"],
+    "python": [
+        "main.py", "app.py", "run.py", "__main__.py",
+        "manage.py", "wsgi.py", "asgi.py", "cli.py",
+    ],
+    "node": [
+        "index.js", "index.ts", "main.js", "main.ts",
+        "app.js", "app.ts", "src/index.js", "src/index.ts", "src/main.ts",
+    ],
     "go": ["main.go", "cmd/main.go"],
     "rust": ["src/main.rs", "src/lib.rs"],
-    "java-maven": ["src/main/java/Main.java", "src/main/java/Application.java", "src/main/java/App.java"],
-    "java-gradle": ["src/main/java/Main.java", "src/main/java/Application.java", "src/main/java/App.java"],
+    "java-maven": [
+        "src/main/java/Main.java",
+        "src/main/java/Application.java",
+        "src/main/java/App.java",
+    ],
+    "java-gradle": [
+        "src/main/java/Main.java",
+        "src/main/java/Application.java",
+        "src/main/java/App.java",
+    ],
     "php": ["index.php", "public/index.php", "artisan"],
     "ruby": ["main.rb", "lib/main.rb"],
     "elixir": ["lib/application.ex"],
@@ -64,7 +79,10 @@ ARCH_CANDIDATES = [
 ]
 
 # 关键模块目录(扫一层,只列名不读内容)
-KEY_DIRS = ["src", "lib", "core", "internal", "pkg", "app", "components", "modules", "cmd"]
+KEY_DIRS = [
+    "src", "lib", "core", "internal", "pkg",
+    "app", "components", "modules", "cmd",
+]
 
 # 单文件最多读 50KB,避免 context 爆炸
 MAX_FILE_SIZE = 50 * 1024
@@ -114,7 +132,8 @@ def _parse_pyproject(content: str) -> dict:
         elif stripped.startswith("version") and "=" in stripped:
             info["version"] = stripped.split("=", 1)[1].strip().strip('"').strip("'")
         elif stripped.startswith("description") and "=" in stripped:
-            info["description"] = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+            val = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+            info["description"] = val
         elif stripped.startswith("dependencies") and "=" in stripped:
             deps_text = stripped.split("=", 1)[1].strip()
             if deps_text.startswith("["):
@@ -240,9 +259,11 @@ def extract_stack_info(fname: str, content: str, stack_type: str) -> dict:
         except Exception:
             info["raw_excerpt"] = content[:2000]
     elif fname in ("requirements.txt",):
-        lines = [l.strip().split("#")[0].strip() for l in content.splitlines()
-                 if l.strip() and not l.strip().startswith("#")]
-        info["packages"] = [l for l in lines if l][:30]
+        lines = [
+            raw.strip().split("#")[0].strip() for raw in content.splitlines()
+            if raw.strip() and not raw.strip().startswith("#")
+        ]
+        info["packages"] = [pkg for pkg in lines if pkg][:30]
     elif fname == "pyproject.toml":
         info.update(_parse_pyproject(content))
     elif fname == "go.mod":
@@ -291,12 +312,16 @@ def find_arch(root: Path) -> list:
         fpath = root / name
         if fpath.exists() and fpath.is_file():
             content = fpath.read_text(encoding="utf-8", errors="ignore")
-            archs.append({"file": name, "content_excerpt": truncate(content, MAX_FILE_SIZE)})
+            archs.append({
+                "file": name,
+                "content_excerpt": truncate(content, MAX_FILE_SIZE),
+            })
     # 同时扫 docs/ 目录(最多 5 个)
     docs_dir = root / "docs"
     if docs_dir.exists() and docs_dir.is_dir():
         for fpath in sorted(docs_dir.iterdir()):
-            if fpath.is_file() and fpath.suffix.lower() in (".md", ".rst") and len(archs) < 5:
+            is_md_rst = fpath.suffix.lower() in (".md", ".rst")
+            if fpath.is_file() and is_md_rst and len(archs) < 5:
                 content = fpath.read_text(encoding="utf-8", errors="ignore")
                 archs.append({
                     "file": f"docs/{fpath.name}",
@@ -375,12 +400,15 @@ def print_markdown(s: dict) -> None:
         print("## 架构文档")
         for a in s["arch_docs"]:
             print(f"- `{a['file']}`:")
-            print(f"  ```\n  {a['content_excerpt'][:2000]}\n  ```\n")
+            excerpt = a["content_excerpt"][:2000]
+            print(f"  ```\n  {excerpt}\n  ```\n")
 
     if s["key_modules"]:
         print("## 关键模块目录(一层结构)")
         for d, info in s["key_modules"].items():
-            print(f"- **{d}/**: {len(info['files'])} 文件, {len(info['subdirs'])} 子目录")
+            n_files = len(info["files"])
+            n_subdirs = len(info["subdirs"])
+            print(f"- **{d}/**: {n_files} 文件, {n_subdirs} 子目录")
             if info["files"]:
                 print(f"  - 文件: {', '.join(info['files'][:10])}")
             if info["subdirs"]:
