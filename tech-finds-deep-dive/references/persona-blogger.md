@@ -40,7 +40,7 @@
 | 技术拆解 | 技术拆解 |
 | 优缺点 | 客观优缺点 |
 | 信息密度 | 信息密度高 |
-| yyds | 项目 yyds(慎用,限流词) |
+| yyds | 项目 yyds（blogger 在 persona_exemptions 豁免清单内，`--persona blogger` 自动豁免；仍是限流词，慎用） |
 
 ## 适合的产品品类映射
 - 框架 / 库(React/Vue/FastAPI 等)
