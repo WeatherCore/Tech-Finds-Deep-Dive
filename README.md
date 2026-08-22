@@ -80,7 +80,7 @@ flowchart TB
 打开你正在用的 agent，直接告诉它：
 
 ```
-帮我安装这个 skill：https://github.com/WeatherCore/Code-Explain-Expert
+帮我安装这个 skill：https://github.com/WeatherCore/tech-finds-deep-dive
 ```
 
 2️⃣ **触发 skill**
@@ -136,13 +136,18 @@ Tech-Finds-Deep-Dive/
 └── tech-finds-deep-dive/              # skill 本体
     ├── SKILL.md                       # skill 定义：Goal / Workflow / Decision Tree / Constraints / Validation
     ├── agents/
-    │   └── openai.yaml                # skill 接口元数据（显示名 / 短描述 / 默认 prompt）
+    │   └── openai.yaml                # skill 接口元数据（显示名 / 短描述 / 默认 prompt / 参数定义）
     ├── scripts/
     │   ├── read_project.py            # 读项目核心文件，产出结构化摘要（50KB 截断·不读测试·14 语言栈识别）
-    │   └── banned_words_check.py      # 违禁词自检：扫描+命中报告+改写建议（单字词防误报）
+    │   ├── banned_words_check.py      # 违禁词自检：扫描+命中报告+改写建议（单字词防误报）
+    │   └── tests/                     # 单元测试（read_project / banned_words_check 真实路径覆盖）
+    │       ├── test_read_project.py
+    │       └── test_banned_words_check.py
     ├── assets/
     │   └── banned-words.json          # 违禁词清单（5 类·级别·改写建议·人设豁免表，数据与逻辑分离）
     └── references/
+        ├── execution-prompt.md          # LLM 执行用轻量指令（workflow + decision tree + constraints）
+        ├── output-template.md         # 最终输出格式模板（文案 + 四维卖点清单 + 元信息）
         ├── selling-points-framework.md   # 四维卖点提取框架（6 卖点+3 画像+2 竞品+反直觉，操作指南）
         ├── post-templates.md             # 8 种爆文结构模板（场景/人设/骨架/标题公式/标签/字数）
         ├── persona-student.md            # 学生党人设（口吻/痛点/词汇表/hook）
@@ -162,6 +167,8 @@ Tech-Finds-Deep-Dive/
 - [x] 违禁词自检 + 改写 + 复检闭环（5 类词·3 级别·防误报）
 - [x] 结构化项目摘要脚本（14 语言栈·50KB 截断）
 - [x] 2 篇完整范文（few-shot 参照）
+- [x] 脚本测试用例（read_project / banned_words_check 核心路径覆盖）
+- [x] 执行 prompt 拆分 + 输出模板标准化
 - [ ] 更多平台适配（B 站 / 掘金 / 知乎种草文案风格）
 - [ ] 违禁词清单自动更新（跟进小红书算法变化）
 - [ ] 配图建议模板库（`--with-image` 扩展）
