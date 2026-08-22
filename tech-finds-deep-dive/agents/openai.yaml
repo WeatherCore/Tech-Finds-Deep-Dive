@@ -2,3 +2,31 @@ interface:
   display_name: "小红书技术项目种草文案"
   short_description: "深度读懂技术项目,产出可发布的小红书种草文案"
   default_prompt: "用 tech-finds-deep-dive 把这个技术项目深度读懂,产出可发的小红书种草文案。"
+  parameters:
+    - name: "project_path"
+      type: "string"
+      description: "本地项目根目录路径(三选一,优先使用)。例如: /path/to/your-project"
+      required: false
+    - name: "github_url"
+      type: "string"
+      description: "GitHub 项目链接(三选一)。提供时 skill 会尝试用 WebFetch 抓 README"
+      required: false
+    - name: "project_text"
+      type: "string"
+      description: "项目文档文本(三选一)。直接粘贴时跳过 read_project.py 读项目步骤"
+      required: false
+    - name: "persona"
+      type: "string"
+      description: "人设 override。可选: student(学生党) / coder(转码人) / blogger(技术博主) / jobseeker(求职者)"
+      required: false
+      default: "auto"
+    - name: "template"
+      type: "string"
+      description: "爆文结构模板 override。可选: growth(成长记) / showcase(成果展示) / comparison(对比测评) / pitfalls(避坑指南) / opensource(开源分享) / resume(简历项目) / student(学生党必备) / source(源码精读)"
+      required: false
+      default: "auto"
+    - name: "with_image"
+      type: "boolean"
+      description: "是否输出配图建议"
+      required: false
+      default: false
