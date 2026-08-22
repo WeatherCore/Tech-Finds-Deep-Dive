@@ -80,8 +80,12 @@ class BuildSummaryTests(unittest.TestCase):
     def test_build_summary_on_minimal_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "README.md").write_text("# Demo\n\nA minimal project.", encoding="utf-8")
-            (root / "requirements.txt").write_text("flask\nrequests>=2.0", encoding="utf-8")
+            (root / "README.md").write_text(
+                "# Demo\n\nA minimal project.", encoding="utf-8"
+            )
+            (root / "requirements.txt").write_text(
+                "flask\nrequests>=2.0", encoding="utf-8"
+            )
             (root / "src").mkdir()
             (root / "src" / "main.py").write_text("print('hello')", encoding="utf-8")
 
