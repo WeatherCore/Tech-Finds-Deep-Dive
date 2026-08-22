@@ -6,76 +6,71 @@ description: 深度读懂技术项目/开源项目/skill,产出可直接发布�
 # Tech Finds Deep Dive
 
 ## Goal
-深度读懂一款技术项目 / 开源项目 / 自研工具 / skill,产出符合小红书语言风格、可直接发布、不千篇一律的种草文案。解决市面同类 skill "只给一篇文案、不深挖产品、不分人设、不管违禁词" 的敷衍问题——读懂必须达四维标准,人设按品类自动匹配,违禁词发前自检改写。
 
-## Workflow
-1. **确认输入**:项目路径(优先) / GitHub 链接 / 项目文档文本。三选一,默认读项目路径。
-2. **读取项目核心文件**:运行本 skill 目录下的 `scripts/read_project.py`(本 skill 安装位置下的 scripts/,不是目标项目目录),产出结构化项目摘要(README/技术栈/主入口/架构文档/关键模块,不读测试用例,避免 context 爆炸)。脚本不可用(Python 缺失/路径不可解析)时,LLM 直接用 Read 工具按相同范围读取上述文件作为 fallback,不中断流程。
-3. **提取四维卖点**(必须全产出,缺一不可):
-   - ≥6 个差异化卖点(不是 "性能好" "性价比高" 这种空话)
-   - ≥3 种典型用户画像的痛点场景
-   - ≥2 个最接近竞品并说清差异
-   - ≥1 个反直觉卖点(别人不写但能戳到人的点)
-   参考 `references/selling-points-framework.md`。
-4. **匹配人设**:按产品品类自动匹配最贴合人设,参考对应人设文件(`references/persona-student.md` / `persona-coder.md` / `persona-blogger.md` / `persona-jobseeker.md`)。用户可手动 override。
-   - 学生项目/教学类 → 学生党
-   - 工具类/工作流类 → 转码人
-   - 框架/库/开源项目 → 技术博主
-   - 简历项目/求职作品 → 求职者
-5. **选爆文结构模板**:从 `references/post-templates.md` 8 种里选 1 种最贴合的(成长记/成果展示/对比测评/避坑指南/开源分享/简历项目/学生党必备/源码精读)。
-6. **生成文案**:1 主推标题 + 2 备选 + 正文 + 话题标签组合。正文必须用人设口吻,符合小红书语言风格(emoji 适度、口语化、姐妹感/兄弟感、痛点 hook)。格式与口吻参照 `references/example-posts.md` 的两篇完整范文。
-7. **违禁词自检**:运行本 skill 的 `scripts/banned_words_check.py`,命中违禁词自动改写,不能只标注不改。**改写后必须复检一遍**(再跑一次脚本),仍命中 → 继续改到通过为止,才算过关。命中词属于当前人设词汇表(见 persona-*.md 词汇表)的,视为该人设正常表达,不强制改(见 Constraints)。
-8. **可选:配图建议**(`--with-image` 开关,默认关)。开关开启时给每张图拍什么/文字叠加建议。默认模式下跳过此步。
-9. **输出**:最终文案 + 卖点清单(供用户验收"读懂"是否达标)。
-10. **可选:用户反馈迭代**:用户对初稿提意见(换人设/换模板/突出某个卖点/调整语气) → 只重写受影响部分,不重跑步骤 2-5;仅当用户换项目/换输入时才从步骤 1 重跑。
+深度读懂一款技术项目 / 开源项目 / 自研工具 / skill,产出符合小红书语言风格、可直接发布、不千篇一律的种草文案。解决市面同类 skill "只给一篇文案、不深挖产品、不分人设、不管违禁词" 的敷衍问题。
 
-## Decision Tree
-- 输入是项目路径(本地目录) → 运行本 skill 的 `scripts/read_project.py` 读取
-- 本 skill 脚本不可用(Python 缺失/路径不可解析) → LLM 直接用 Read 工具按相同范围读文件(fallback)
-- 输入是 GitHub 链接 → 用 WebFetch 抓 README,项目结构信息提示用户提供
-- 输入是项目文档文本 → 直接进入步骤 3,跳过步骤 2
-- 配图开关 `--with-image` 开启 → 步骤 8 启用;否则跳过
-- 用户指定人设 → 用指定;否则按品类自动匹配(见步骤 4 映射表)
-- 4 维卖点缺任何一维 → 回到步骤 3 重提,不能跳过
-- 违禁词自检不通过 → 回到步骤 6 重写命中段落,不能只标注;改写后必须复检,仍命中继续改
-- 命中词属于当前人设词汇表(见 persona-*.md) → 该人设下不算违禁,不强制改;换人设则需重检
-- 用户反馈初稿 → 局部重写受影响部分,不重跑全流程
+## 核心机制
+
+- **四维卖点硬约束**:≥6 差异化卖点 + ≥3 用户画像痛点场景 + ≥2 竞品差异 + ≥1 反直觉卖点,缺一不可。
+- **4 人设按品类自动匹配**:学生党 / 转码人 / 技术博主 / 求职者,用户可 override。
+- **违禁词自检→改写→复检闭环**:命中必改,改后再检,直到通过。
+- **脚本 fallback**:脚本不可用时 LLM 用 Read 工具直接读核心文件,不中断流程。
+
+## 执行指令
+
+LLM 执行本 skill 时,直接消费 `references/execution-prompt.md` 中的十步 workflow、decision tree、constraints、validation。
+
+## Workflow(摘要)
+
+1. 确认输入(项目路径 / GitHub 链接 / 文档文本)
+2. 读取项目核心文件(`scripts/read_project.py` 或 Read 工具 fallback)
+3. 提取四维卖点(`references/selling-points-framework.md`)
+4. 按品类匹配人设(`references/persona-*.md`)
+5. 选爆文结构模板(`references/post-templates.md`)
+6. 生成文案(参考 `references/example-posts.md`)
+7. 违禁词自检(`scripts/banned_words_check.py` + `assets/banned-words.json`)
+8. 可选配图建议(`--with-image`)
+9. 按 `references/output-template.md` 输出文案 + 卖点清单
+10. 用户反馈迭代(局部重写,换项目才重跑)
+
+## Decision Tree(摘要)
+
+- 项目路径 → `read_project.py`;脚本不可用时 Read 工具 fallback
+- GitHub 链接 → WebFetch 抓 README + 提示补充结构
+- 文档文本 → 跳过步骤 2
+- 4 维缺一 → 回步骤 3 重提
+- 违禁词命中且非人设豁免 → 改写 → 复检
+- 用户调人设/模板/语气 → 局部重写步骤 6-9
+- 用户换项目/换输入 → 从步骤 1 重跑
 
 ## Constraints
-- 读懂标准必须达标:6 卖点 + 3 画像 + 2 竞品 + 反直觉卖点,**缺一不可**,产出前必须自检全有
-- 违禁词必须自检并改写,不能只标注不改;改写后必须复检到通过
-- **人设词汇表豁免**:命中违禁词若属于当前人设词汇表中的词(见 persona-*.md 词汇表),视为该人设的正常表达,不强制改;换人设时需重新检查
-- 人设按品类自动匹配,不能固定单一 "种草博主" 人设(固定人设是敷衍特征)
-- 爆文结构从内置 8 种选,不外搜小红书
-- **产品范围限定**:技术项目 / 开源项目 / 自研工具 / skill 本身。**不处理电商实物商品、纯 SaaS 商品**(那是另一个 skill 的边界)
-- 输出默认不带配图建议,仅 `--with-image` 开启时给
-- 话题标签仅作参考,提醒用户发布前在小红书搜索确认标签仍活跃(标签热度是动态的)
-- skill 存项目级,git 操作归用户(skill 不自作主张 commit/push)
-- 若用户暂时给不出具体信息(如竞品名、敷衍反例),先按框架产出并留占位,后续迭代补充
+
+- 四维卖点缺一不可,产出前必须自检全有。
+- 违禁词必须自检并改写,改写后必须复检到通过。
+- 命中词若在当前人设豁免清单(`assets/banned-words.json` `persona_exemptions`)内,不强制改;换人设需重检。
+- 人设按品类自动匹配,不能固定单一 "种草博主" 人设。
+- 爆文结构从内置 8 种选,不外搜小红书。
+- 产品范围限定:技术项目 / 开源项目 / 自研工具 / skill。**不处理电商实物商品、纯 SaaS 商品**。
+- 输出默认不带配图建议,仅 `--with-image` 开启时给。
+- 标签热度动态,提醒用户发布前自行确认。
+- skill 存项目级,git 操作归用户,不自作主张 commit/push。
+- 用户给不出具体信息时,先按框架产出并留占位,后续迭代补充。
 
 ## Validation
-- **必查**:
-  - 4 维卖点(6+3+2+反直觉)是否全产出
-  - 违禁词自检是否通过(运行 `scripts/banned_words_check.py`,改写后复检通过)
-  - 人设是否匹配(自动或用户指定);人设词汇表豁免只用于当前人设
-  - 爆文结构是否从 8 种里选
-- **成功标准**:
-  - 文案可直接复制发到小红书不被判违规
-  - 卖点清单能让用户验收"读懂"达标
-  - 同一项目多次产出有差异化(不千篇一律)
-- **首次失败检查**:
-  - 项目读取失败 → 检查路径/链接有效性;`read_project.py` 不可用则改用 Read 工具 fallback
-  - 4 维卖点缺一 → 回到步骤 3 重提
-  - 违禁词未改或复检未过 → 回到步骤 7 重写再检
+
+- 4 维卖点(6+3+2+反直觉)是否全产出?
+- 违禁词自检是否通过(含复检)?
+- 人设是否匹配(自动或用户指定)?
+- 爆文结构是否从 8 种里选?
 
 ## Resources
-- `scripts/read_project.py`:读项目核心文件(README/技术栈/入口/架构),产出结构化摘要(可选,不可用时 LLM 用 Read 工具代替)
-- `scripts/banned_words_check.py`:违禁词自检+改写建议,读取 `assets/banned-words.json`
-- `assets/banned-words.json`:违禁/限流词清单(技术敏感词+通用违禁词)+ 人设豁免表,数据与逻辑分离便于更新
-- `references/persona-student.md`:学生党人设(口吻/痛点/词汇表/常用 hook)
-- `references/persona-coder.md`:转码/转行人设
-- `references/persona-blogger.md`:技术博主/测评博主人设
-- `references/persona-jobseeker.md`:求职者人设(简历项目包装视角)
+
+- `scripts/read_project.py`:读项目核心文件,产出结构化摘要
+- `scripts/banned_words_check.py`:违禁词自检
+- `assets/banned-words.json`:违禁词清单 + 人设豁免表
+- `references/execution-prompt.md`:LLM 执行用轻量指令
+- `references/output-template.md`:最终输出格式模板
+- `references/selling-points-framework.md`:4 维卖点提取框架
 - `references/post-templates.md`:8 种爆文结构模板
-- `references/selling-points-framework.md`:4 维卖点提取框架操作指南
-- `references/example-posts.md`:2 篇完整范文(开源分享×技术博主、学生党必备×学生党),步骤 6 的格式与口吻参照
+- `references/persona-*.md`:4 种人设
+- `references/example-posts.md`:2 篇范文
