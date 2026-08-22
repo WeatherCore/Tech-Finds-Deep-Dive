@@ -58,11 +58,11 @@ def scan_text(text: str, words_data: dict) -> list:
                     break
                 # 单字词防误报:后接中性字(后/初/近/终/先)时按"最后/最初"等中性词跳过
                 if len(word) == 1 and idx + 1 < len(text) and text[idx + 1] in COMPOUND_SKIP:
-                    start = idx + 1
+                    start = idx + 2
                     continue
                 # "第一"防误报:后接量词(个/次/天...)时是序数用法,不是排名宣传,跳过
                 if word == "第一" and idx + 2 < len(text) and text[idx + 2] in ORDINAL_MEASURE:
-                    start = idx + 2
+                    start = idx + 3
                     continue
                 # 提取上下文(前后 20 字)
                 ctx_start = max(0, idx - 20)
