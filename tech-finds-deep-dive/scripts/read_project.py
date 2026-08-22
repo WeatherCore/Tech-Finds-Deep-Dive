@@ -85,6 +85,145 @@ def detect_stack(root: Path) -> dict:
     return found
 
 
+def _parse_pyproject(content: str) -> dict:
+    """解析 pyproject.toml: 提取 [project] 基本信息与依赖。"""
+    info: dict = {"name": "", "version": "", "description": "", "dependencies": []}
+    in_project = False
+    deps: list[str] = []
+    collecting_deps = False
+    deps_buffer = ""
+
+    lines = content.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if stripped.startswith("[project"):
+            in_project = True
+            i += 1
+            continue
+        if stripped.startswith("[") and "]" in stripped:
+            in_project = False
+            i += 1
+            continue
+        if not in_project:
+            i += 1
+            continue
+        if stripped.startswith("name") and "=" in stripped:
+            info["name"] = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+        elif stripped.startswith("version") and "=" in stripped:
+            info["version"] = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+        elif stripped.startswith("description") and "=" in stripped:
+            info["description"] = stripped.split("=", 1)[1].strip().strip('"').strip("'")
+        elif stripped.startswith("dependencies") and "=" in stripped:
+            deps_text = stripped.split("=", 1)[1].strip()
+            if deps_text.startswith("["):
+                deps_buffer = deps_text
+                collecting_deps = True
+                if deps_text.endswith("]"):
+                    deps += _extract_quoted_items(deps_buffer)
+                    collecting_deps = False
+                    deps_buffer = ""
+        elif collecting_deps:
+            deps_buffer += " " + stripped
+            if stripped.endswith("]"):
+                deps += _extract_quoted_items(deps_buffer)
+                collecting_deps = False
+                deps_buffer = ""
+        i += 1
+    info["dependencies"] = deps[:25]
+    return info
+
+
+def _extract_quoted_items(text: str) -> list[str]:
+    """从 ["a", "b"] 这种单行/多行数组中提取引号内字符串。"""
+    items: list[str] = []
+    current = ""
+    in_quote = False
+    quote_char = ""
+    for ch in text:
+        if ch in ('"', "'"):
+            if not in_quote:
+                in_quote = True
+                quote_char = ch
+            elif quote_char == ch:
+                in_quote = False
+                items.append(current)
+                current = ""
+            continue
+        if in_quote:
+            current += ch
+    return items
+
+
+def _parse_go_mod(content: str) -> dict:
+    """解析 go.mod: 正确提取 module 与 require 块/单行依赖。"""
+    info: dict = {"module": "", "requires": []}
+    in_require_block = False
+
+    for line in content.splitlines():
+        ls = line.strip()
+        if not ls or ls.startswith("//"):
+            continue
+        if ls.startswith("module "):
+            info["module"] = ls[7:].strip()
+            continue
+        if ls == "require (":
+            in_require_block = True
+            continue
+        if in_require_block and ls == ")":
+            in_require_block = False
+            continue
+        if in_require_block:
+            # 块内每行: module version [// indirect]
+            parts = ls.split()
+            if parts:
+                info["requires"].append(parts[0])
+            continue
+        if ls.startswith("require "):
+            parts = ls[8:].split()
+            if parts:
+                info["requires"].append(parts[0])
+
+    info["requires"] = info["requires"][:25]
+    return info
+
+
+def _parse_cargo(content: str) -> dict:
+    """解析 Cargo.toml: 提取 [package] 信息与 [dependencies]。"""
+    info: dict = {"name": "", "version": "", "description": "", "dependencies": []}
+    in_package = False
+    in_deps = False
+
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[package]"):
+            in_package = True
+            in_deps = False
+            continue
+        if stripped.startswith("[dependencies]"):
+            in_package = False
+            in_deps = True
+            continue
+        if stripped.startswith("[") and "]" in stripped:
+            in_package = False
+            in_deps = False
+            continue
+        if in_package and "=" in stripped:
+            key, val = stripped.split("=", 1)
+            key = key.strip()
+            val = val.strip().strip('"').strip("'")
+            if key in ("name", "version", "description"):
+                info[key] = val
+        if in_deps and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            if key:
+                info["dependencies"].append(key)
+
+    info["dependencies"] = info["dependencies"][:25]
+    return info
+
+
 def extract_stack_info(fname: str, content: str, stack_type: str) -> dict:
     """从技术栈文件提取关键信息(不读全部,只摘关键)"""
     info = {}
@@ -105,23 +244,11 @@ def extract_stack_info(fname: str, content: str, stack_type: str) -> dict:
                  if l.strip() and not l.strip().startswith("#")]
         info["packages"] = [l for l in lines if l][:30]
     elif fname == "pyproject.toml":
-        # 提取 [project] 段的 dependencies
-        info["raw_excerpt"] = content[:2500]
+        info.update(_parse_pyproject(content))
     elif fname == "go.mod":
-        info["module"] = ""
-        info["requires"] = []
-        for line in content.splitlines():
-            ls = line.strip()
-            if ls.startswith("module "):
-                info["module"] = ls[7:].strip()
-            elif ls and not ls.startswith("//") and ls != "require (" and ls != ")":
-                if ls.startswith("require "):
-                    info["requires"].append(ls[8:].split()[0])
-                elif " " in ls:
-                    info["requires"].append(ls.split()[0])
-        info["requires"] = info["requires"][:25]
+        info.update(_parse_go_mod(content))
     elif fname == "Cargo.toml":
-        info["raw_excerpt"] = content[:2500]
+        info.update(_parse_cargo(content))
     elif fname in ("pom.xml", "build.gradle", "build.gradle.kts"):
         info["raw_excerpt"] = content[:2000]
     else:
